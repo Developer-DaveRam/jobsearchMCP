@@ -1,0 +1,43 @@
+{
+  "name": "jobsearchmcp",
+  "version": "1.0.0",
+  "description": "Job Search MCP Server with Next.js",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 5066",
+    "build": "next build",
+    "start": "next start -p 5066",
+    "build:mcp": "esbuild src/mcp/server.ts --bundle --format=esm --platform=node --outfile=dist/mcp-server.js",
+    "typecheck": "tsc --noEmit",
+    "swagger": "tsx src/api/swagger.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@prisma/adapter-mariadb": "^7.10.1",
+    "@prisma/client": "^7.8.0",
+    "axios": "^1.21.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "next": "^14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "std-kit": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "esbuild": "^0.28.0",
+    "fast-check": "^4.10.2",
+    "postcss": "^8.4.38",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.22.3",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

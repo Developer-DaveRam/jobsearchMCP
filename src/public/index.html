@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Search Intelligence Dashboard - Daveram A</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-gray-800 border-b border-gray-700 shadow-md">
+    <div class="container mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-blue-400 flex items-center">
+          <i class="fas fa-briefcase mr-3"></i> Job Search Intelligence Dashboard
+        </h1>
+        <p class="text-sm text-gray-400 mt-1">
+          Candidate: <span class="text-white font-semibold">Daveram A</span> (Full Stack Developer | 1-2 Yrs | Node.js, TypeScript, React, Next.js) | Target: ₹6–9 LPA | Notice: Dec 25, 2026
+        </p>
+      </div>
+      <div class="mt-4 md:mt-0 flex space-x-3">
+        <button onclick="fetchPortalJobs()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm font-medium transition flex items-center">
+          <i class="fas fa-sync-alt mr-2"></i> Refresh & Sync Portals
+        </button>
+        <a href="/swagger" target="_blank" class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded shadow text-sm font-medium transition flex items-center">
+          <i class="fas code mr-2"></i> API Docs
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-6 py-8">
+    
+    <!-- Summary Statistics Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
+        <p class="text-xs text-gray-400 uppercase font-semibold">Total Jobs</p>
+        <p id="stat-total" class="text-2xl font-bold text-white mt-1">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-green-700 text-center">
+        <p class="text-xs text-green-400 uppercase font-semibold">Highly Possible</p>
+        <p id="stat-highlyPossible" class="text-2xl font-bold text-green-400 mt-1">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-blue-700 text-center">
+        <p class="text-xs text-blue-400 uppercase font-semibold">Good Match</p>
+        <p id="stat-goodMatch" class="text-2xl font-bold text-blue-400 mt-1">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-yellow-700 text-center">
+        <p class="text-xs text-yellow-400 uppercase font-semibold">Moderate</p>
+        <p id="stat-moderate" class="text-2xl font-bold text-yellow-400 mt-1">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
+        <p class="text-xs text-gray-400 uppercase font-semibold">Pending</p>
+        <p id="stat-pending" class="text-2xl font-bold text-gray-300 mt-1">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-indigo-700 text-center">
+        <p class="text-xs text-indigo-400 uppercase font-semibold">Applied</p>
+        <p id="stat-applied" class="text-2xl font-bold text-indigo-400 mt-1">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-purple-700 text-center">
+        <p class="text-xs text-purple-400 uppercase font-semibold">Interviews</p>
+        <p id="stat-interview" class="text-2xl font-bold text-purple-400 mt-1">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-red-700 text-center">
+        <p class="text-xs text-red-400 uppercase font-semibold">Low</p>
+        <p id="stat-low" class="text-2xl font-bold text-red-400 mt-1">0</p>
+      </div>
+    </div>
+
+    <!-- Filters & Search Bar -->
+    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 mb-6 flex flex-wrap gap-4 items-center justify-between">
+      <div class="flex flex-wrap gap-3 items-center flex-grow">
+        <div class="w-full sm:w-64">
+          <input type="text" id="search-input" placeholder="Search company, role, skills..." oninput="filterJobs()"
+            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <select id="filter-probability" onchange="filterJobs()" class="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none">
+            <option value="">All Probabilities</option>
+            <option value="HIGHLY POSSIBLE">🟢 Highly Possible</option>
+            <option value="GOOD MATCH">🔵 Good Match</option>
+            <option value="MODERATE">🟡 Moderate</option>
+            <option value="LOW">🔴 Low</option>
+          </select>
+        </div>
+        <div>
+          <select id="filter-location" onchange="filterJobs()" class="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none">
+            <option value="">All Locations</option>
+            <option value="Bengaluru">Bengaluru</option>
+            <option value="Chennai">Chennai</option>
+            <option value="Remote">Remote</option>
+          </select>
+        </div>
+        <div>
+          <select id="filter-status" onchange="filterJobs()" class="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none">
+            <option value="">All App Statuses</option>
+            <option value="Not Applied">Not Applied</option>
+            <option value="Applied">Applied</option>
+            <option value="Interview">Interview</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Offer">Offer</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <span id="job-count-display" class="text-sm text-gray-400 font-medium">Showing 0 jobs</span>
+      </div>
+    </div>
+
+    <!-- Jobs Table -->
+    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden shadow-xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-700 text-gray-300 text-xs uppercase tracking-wider">
+              <th class="p-3">Company & Role</th>
+              <th class="p-3">Location & Salary</th>
+              <th class="p-3">Match Score</th>
+              <th class="p-3">Probability</th>
+              <th class="p-3">Why I Fit / Missing</th>
+              <th class="p-3">Response Likelihood</th>
+              <th class="p-3">Status</th>
+              <th class="p-3">Notes & Actions</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-table-body" class="divide-y divide-gray-700 text-sm">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-blue-600 text-white px-4 py-2 rounded shadow-lg hidden transition transform duration-300">
+    Action successful!
+  </div>
+
+  <script>
+    let allJobs = [];
+
+    async function loadDashboard() {
+      try {
+        const [jobsRes, statsRes] = await Promise.all([
+          fetch('/jobs/matched'),
+          fetch('/jobs/stats')
+        ]);
+        const jobsJson = await jobsRes.json();
+        const statsJson = await statsRes.json();
+
+        if (jobsJson.status === 1) {
+          allJobs = jobsJson.data;
+          renderJobs(allJobs);
+        }
+        if (statsJson.status === 1) {
+          updateStats(statsJson.data);
+        }
+      } catch (err) {
+        console.error("Error loading dashboard data:", err);
+        showToast("Error loading jobs data", true);
+      }
+    }
+
+    async function fetchPortalJobs() {
+      showToast("Syncing portal jobs from LinkedIn, Naukri, Indeed, Glassdoor...");
+      try {
+        const res = await fetch('/jobs/fetch-portals', { method: 'POST' });
+        const json = await res.json();
+        if (json.status === 1) {
+          showToast(`Successfully synced ${json.data.saved} new jobs!`);
+          loadDashboard();
+        } else {
+          showToast("Failed to sync portals", true);
+        }
+      } catch (err) {
+        showToast("Error syncing portal jobs", true);
+      }
+    }
+
+    function updateStats(stats) {
+      document.getElementById('stat-total').innerText = stats.total;
+      document.getElementById('stat-highlyPossible').innerText = stats.highlyPossible;
+      document.getElementById('stat-goodMatch').innerText = stats.goodMatch;
+      document.getElementById('stat-moderate').innerText = stats.moderate;
+      document.getElementById('stat-pending').innerText = stats.pending;
+      document.getElementById('stat-applied').innerText = stats.applied;
+      document.getElementById('stat-interview').innerText = stats.interview;
+      document.getElementById('stat-low').innerText = stats.low;
+    }
+
+    function renderJobs(jobs) {
+      const tbody = document.getElementById('jobs-table-body');
+      tbody.innerHTML = '';
+      document.getElementById('job-count-display').innerText = `Showing ${jobs.length} jobs`;
+
+      if (jobs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-gray-400">No matching jobs found. Click "Refresh & Sync Portals".</td></tr>`;
+        return;
+      }
+
+      jobs.forEach(job => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-750 transition";
+
+        let probBadgeClass = "bg-gray-700 text-gray-300";
+        if (job.probabilityStatus === "HIGHLY POSSIBLE") probBadgeClass = "bg-green-900 text-green-300 border border-green-700";
+        else if (job.probabilityStatus === "GOOD MATCH") probBadgeClass = "bg-blue-900 text-blue-300 border border-blue-700";
+        else if (job.probabilityStatus === "MODERATE") probBadgeClass = "bg-yellow-900 text-yellow-300 border border-yellow-700";
+        else if (job.probabilityStatus === "LOW") probBadgeClass = "bg-red-900 text-red-300 border border-red-700";
+
+        tr.innerHTML = `
+          <td class="p-3">
+            <div class="font-bold text-white">${job.title}</div>
+            <div class="text-xs text-blue-400">${job.company}</div>
+            <div class="text-xs text-gray-400 mt-1"><span class="bg-gray-700 px-1.5 py-0.5 rounded">${job.sourcePortal || job.source || 'Portal'}</span></div>
+          </td>
+          <td class="p-3 text-xs">
+            <div class="text-gray-300"><i class="fas fa-map-marker-alt text-gray-400 mr-1"></i> ${job.location || 'Remote'}</div>
+            <div class="text-green-400 font-semibold mt-1"><i class="fas fa-rupee-sign mr-0.5"></i> ${job.salary || 'Not specified'}</div>
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-1 bg-gray-900 rounded font-bold text-sm text-green-400 border border-gray-700">${job.matchScore || 0}%</span>
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded text-xs font-semibold ${probBadgeClass}">${job.probabilityStatus}</span>
+          </td>
+          <td class="p-3 text-xs max-w-xs">
+            <div class="text-gray-300"><strong>Fit:</strong> ${job.whyIFit || 'Good skill match'}</div>
+            <div class="text-red-400 mt-0.5"><strong>Missing:</strong> ${job.missingSkills || 'None'}</div>
+          </td>
+          <td class="p-3 text-xs text-gray-300">
+            ${job.recruiterResponseLikelihood || 'Medium'}
+          </td>
+          <td class="p-3">
+            <select onchange="updateStatus(${job.id}, this.value)" class="bg-gray-900 border border-gray-700 rounded text-xs text-white p-1 focus:outline-none">
+              <option value="Not Applied" ${job.applicationStatus === 'Not Applied' ? 'selected' : ''}>Not Applied</option>
+              <option value="Applied" ${job.applicationStatus === 'Applied' ? 'selected' : ''}>Applied</option>
+              <option value="Interview" ${job.applicationStatus === 'Interview' ? 'selected' : ''}>Interview</option>
+              <option value="Rejected" ${job.applicationStatus === 'Rejected' ? 'selected' : ''}>Rejected</option>
+              <option value="Offer" ${job.applicationStatus === 'Offer' ? 'selected' : ''}>Offer</option>
+            </select>
+          </td>
+          <td class="p-3 text-xs">
+            <div class="mb-1">
+              <input type="text" value="${job.notes || ''}" placeholder="Add notes..." onchange="updateNotes(${job.id}, this.value)"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500">
+            </div>
+            ${job.url ? `<a href="${job.url}" target="_blank" class="text-blue-400 hover:underline inline-flex items-center"><i class="fas fa-external-link-alt mr-1"></i> Apply Link</a>` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterJobs() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const prob = document.getElementById('filter-probability').value;
+      const loc = document.getElementById('filter-location').value;
+      const status = document.getElementById('filter-status').value;
+
+      const filtered = allJobs.filter(job => {
+        const matchesSearch = (job.title + " " + job.company + " " + job.whyIFit).toLowerCase().includes(search);
+        const matchesProb = !prob || job.probabilityStatus === prob;
+        const matchesLoc = !loc || (job.location && job.location.toLowerCase().includes(loc.toLowerCase()));
+        const matchesStatus = !status || job.applicationStatus === status;
+        return matchesSearch && matchesProb && matchesLoc && matchesStatus;
+      });
+
+      renderJobs(filtered);
+    }
+
+    async function updateStatus(id, newStatus) {
+      try {
+        const res = await fetch(`/jobs/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationStatus: newStatus })
+        });
+        const json = await res.json();
+        if (json.status === 1) {
+          showToast("Application status updated!");
+          loadDashboard();
+        } else {
+          showToast("Failed to update status", true);
+        }
+      } catch (err) {
+        showToast("Error updating status", true);
+      }
+    }
+
+    async function updateNotes(id, newNotes) {
+      try {
+        const res = await fetch(`/jobs/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: newNotes })
+        });
+        const json = await res.json();
+        if (json.status === 1) {
+          showToast("Notes updated!");
+        } else {
+          showToast("Failed to update notes", true);
+        }
+      } catch (err) {
+        showToast("Error updating notes", true);
+      }
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.className = `fixed bottom-5 right-5 text-white px-4 py-2 rounded shadow-lg transition transform duration-300 z-50 ${isError ? 'bg-red-600' : 'bg-blue-600'}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Initial load
+    loadDashboard();
+  </script>
+</body>
+</html>

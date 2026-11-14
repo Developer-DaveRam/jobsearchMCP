@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Job {
+  id                          Int      @id @default(autoincrement())
+  title                       String
+  company                     String
+  location                    String?
+  description                 String?  @db.MediumText
+  salary                      String?
+  url                         String?
+  source                      String?
+  sourcePortal                String?
+  matchScore                  Float?
+  probabilityStatus           String?  @default("Moderate")
+  whyIFit                     String?  @db.Text
+  missingSkills               String?  @db.Text
+  recruiterResponseLikelihood String?
+  applicationStatus           String?  @default("Not Applied")
+  notes                       String?  @db.Text
+  postedAt                    DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  s_delete                    Int      @default(0) @db.TinyInt
+}
