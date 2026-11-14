@@ -109,8 +109,7 @@ export const RESUME_PROFILE = {
   workMode: [
     "hybrid",
     "onsite",
-    "remote",
-  ],
+    ],
 
   expectedSalary: {
     min: 600000,
@@ -211,6 +210,8 @@ export function calculateJobMatchScore(
     "full stack",
     "backend developer",
     "node.js developer",
+    "react.js developer",
+    "next.js developer",
     "software engineer",
     "react developer",
     "backend engineer",
