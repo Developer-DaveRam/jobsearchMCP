@@ -5,6 +5,8 @@ type ApplicationState = { applicationStatus: string; notes: string };
 
 // Temporary process-local state. Persist this in the Job table before deploying multiple instances.
 const jobStateMap = new Map<number, ApplicationState>();
+const jobCache = new Map<string, { expiresAt: number; fetched: number; jobs: any[] }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const http = axios.create({
   timeout: 12000,
   headers: { Accept: "application/json", "User-Agent": "jobsearchMCP/2.1" }
@@ -27,8 +29,13 @@ export class JobFetcherService {
     return "LOW";
   }
 
-  async fetchAndStoreExternalJobs(searchQuery = "node"): Promise<{ fetched: number; saved: number; jobs: any[] }> {
+  async fetchAndStoreExternalJobs(searchQuery = "node", forceRefresh = false): Promise<{ fetched: number; saved: number; jobs: any[] }> {
     const query = searchQuery.trim().slice(0, 120) || "node";
+    const cached = jobCache.get(query.toLowerCase());
+    if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
+      const jobs = cached.jobs.map(job => ({ ...job, ...(jobStateMap.get(job.id) ?? {}) }));
+      return { fetched: cached.fetched, saved: jobs.length, jobs };
+    }
     const response = await http.get("https://remotive.com/api/remote-jobs", {
       params: { search: query, limit: 100 }
     });
@@ -79,6 +86,7 @@ export class JobFetcherService {
     }
 
     const jobs = [...unique.values()].sort((a, b) => b.matchScore - a.matchScore);
+    jobCache.set(query.toLowerCase(), { expiresAt: Date.now() + CACHE_TTL_MS, fetched: rawJobs.length, jobs });
     return { fetched: rawJobs.length, saved: jobs.length, jobs };
   }
 
