@@ -1,5 +1,5 @@
 import axios from "axios";
-import { calculateJobMatchScore, isEligibleJob, getJobMatchLevel } from "../helper/resume-matcher.helper.js";
+import { calculateJobMatchScore, isEligibleJob, getJobMatchLevel } from "../helper/resume-matcher.helper";
 
 type ApplicationState = { applicationStatus: string; notes: string };
 
