@@ -1,11 +1,11 @@
 import axios from "axios";
-import { calculateJobMatchScore, isEligibleJob, getJobEligibilityReason, getJobMatchLevel } from "../helper/resume-matcher.helper";
+import { calculateJobMatchScore, getJobEligibilityReason, getJobMatchLevel } from "../helper/resume-matcher.helper";
 
 type ApplicationState = { applicationStatus: string; notes: string };
 
 // Temporary process-local state. Persist this in the Job table before deploying multiple instances.
 const jobStateMap = new Map<number, ApplicationState>();
-const jobCache = new Map<string, { expiresAt: number; fetched: number; jobs: any[] }>();
+const jobCache = new Map<string, { expiresAt: number; fetched: number; jobs: any[]; rejected: Record<string, number> }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const http = axios.create({
   timeout: 12000,
@@ -34,7 +34,7 @@ export class JobFetcherService {
     const cached = jobCache.get(query.toLowerCase());
     if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
       const jobs = cached.jobs.map(job => ({ ...job, ...(jobStateMap.get(job.id) ?? {}) }));
-      return { fetched: cached.fetched, saved: jobs.length, jobs };
+      return { fetched: cached.fetched, saved: jobs.length, jobs, rejected: cached.rejected };
     }
     const response = await http.get("https://remotive.com/api/remote-jobs", {
       params: { search: query, limit: 100 }
@@ -90,7 +90,7 @@ export class JobFetcherService {
     }
 
     const jobs = [...unique.values()].sort((a, b) => b.matchScore - a.matchScore);
-    jobCache.set(query.toLowerCase(), { expiresAt: Date.now() + CACHE_TTL_MS, fetched: rawJobs.length, jobs });
+    jobCache.set(query.toLowerCase(), { expiresAt: Date.now() + CACHE_TTL_MS, fetched: rawJobs.length, jobs, rejected });
     return { fetched: rawJobs.length, saved: jobs.length, jobs, rejected };
   }
 
