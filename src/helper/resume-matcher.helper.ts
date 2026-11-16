@@ -6,7 +6,7 @@ export const RESUME_PROFILE = {
   remotePreferred: true,
   expectedSalary: { min: 500000, max: 1200000, currency: "INR" },
   skills: {
-    core: ["node.js", "node", "typescript", "express", "react", "next.js", "javascript"],
+    core: ["node.js", "typescript", "express", "react", "next.js", "javascript"],
     secondary: ["prisma", "mysql", "mongodb", "redis", "docker", "tailwind", "rest api", "restful api"],
     additional: ["git", "pm2", "nginx", "bullmq", "html", "css"]
   },
