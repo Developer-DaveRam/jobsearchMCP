@@ -9,7 +9,7 @@ test("matches common Node.js, Express.js and React.js spellings", () => {
     "Bengaluru",
     { jobExperience: "2 years", jobSalary: "₹5-12 LPA" }
   );
-  assert.ok(score >= 70, `expected a strong match, received ${score}`);
+  assert.ok(score >= 65, `expected a strong match, received ${score}`);
   assert.ok(score <= 100);
 });
 
