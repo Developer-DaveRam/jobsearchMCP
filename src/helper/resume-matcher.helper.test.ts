@@ -49,3 +49,28 @@ test("rejects internships and senior roles", () => {
     publication_date: date
   }), false);
 });
+
+test("accepts India and Asia remote roles", () => {
+  const date = new Date().toISOString();
+  for (const location of ["India", "Asia", "Anywhere in the World"]) {
+    assert.equal(isEligibleJob({
+      title: "Node.js Backend Developer",
+      description: "Build APIs",
+      location,
+      url: `https://example.com/jobs/${encodeURIComponent(location)}`,
+      publication_date: date,
+      job_type: "full_time"
+    }), true, `expected location to be eligible: ${location}`);
+  }
+});
+
+test("does not reject a role only because its description mentions contracts", () => {
+  assert.equal(isEligibleJob({
+    title: "Node.js Developer",
+    description: "Work with customers and manage API contracts.",
+    location: "India",
+    url: "https://example.com/jobs/api-contracts",
+    publication_date: new Date().toISOString(),
+    job_type: "full_time"
+  }), true);
+});

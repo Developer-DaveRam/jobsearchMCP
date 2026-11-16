@@ -12,7 +12,7 @@ export const RESUME_PROFILE = {
   },
   excludedJobTypes: ["internship", "intern", "freelance", "part-time", "unpaid", "contract"],
   excludedKeywords: ["senior developer", "lead developer", "technical lead", "architect", "principal engineer", "engineering manager"],
-  maxAgeDays: 7
+  maxAgeDays: 14
 } as const;
 
 type MatchOptions = {
@@ -52,7 +52,7 @@ export function calculateJobMatchScore(
 
   const location = normalize(jobLocation);
   if (RESUME_PROFILE.preferredLocations.some(place => location.includes(place))) score += 10;
-  else if (/remote|anywhere|worldwide/i.test(location)) score += 7;
+  else if (/remote|anywhere|worldwide|global|asia|india/i.test(location)) score += 7;
 
   const experience = normalize(options?.jobExperience ?? "");
   const range = experience.match(/(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)/);
@@ -82,34 +82,39 @@ export function calculateJobMatchScore(
 
 export function isPreferredLocation(location: string): boolean {
   const value = normalize(location);
+  // Remotive uses a range of labels, not only the literal word "Remote".
+  // Accept India/Asia and globally open remote roles; reject region-restricted roles.
   return RESUME_PROFILE.preferredLocations.some(place => value.includes(place)) ||
-    (RESUME_PROFILE.remotePreferred && /remote|anywhere|worldwide/i.test(value));
+    (RESUME_PROFILE.remotePreferred && /remote|anywhere|worldwide|global|asia|india|all locations|all countries/i.test(value));
+}
+
+export function getJobEligibilityReason(job: Record<string, any>, now = Date.now()): string | null {
+  const title = normalize(job.title ?? job.jobTitle ?? job.role);
+  const location = normalize(job.location ?? job.jobLocation ?? job.candidate_required_location);
+  const jobType = normalize(job.job_type ?? job.jobType ?? job.type);
+
+  if (!title || !job.url) return "missing_title_or_url";
+  if (RESUME_PROFILE.excludedJobTypes.some(term => title.includes(term) || jobType.includes(term))) return "excluded_job_type";
+  if (RESUME_PROFILE.excludedKeywords.some(term => title.includes(term)) || /\b(senior|sr\.?|lead|principal|staff|architect|manager)\b/i.test(title)) return "seniority";
+  if (!isPreferredLocation(location)) return "location_not_eligible";
+
+  if (job.isActive === false || job.isExpired === true || job.isClosed === true ||
+      ["closed", "expired", "inactive"].includes(normalize(job.status))) return "closed_or_inactive";
+
+  const dateValue = job.publication_date ?? job.postedAt ?? job.postingDate ?? job.createdAt;
+  if (!dateValue) return "missing_publication_date";
+  const timestamp = new Date(dateValue).getTime();
+  if (!Number.isFinite(timestamp)) return "invalid_publication_date";
+  const ageDays = (now - timestamp) / 86_400_000;
+  if (ageDays < -1 || ageDays > RESUME_PROFILE.maxAgeDays) return "outside_freshness_window";
+
+  const employees = Number(job.companySize ?? job.employeeCount ?? 0);
+  if (employees > 0 && employees < 50) return "company_below_minimum_size";
+  return null;
 }
 
 export function isEligibleJob(job: Record<string, any>, now = Date.now()): boolean {
-  const title = normalize(job.title ?? job.jobTitle ?? job.role);
-  const description = normalize(job.description ?? job.jobDescription);
-  const location = normalize(job.location ?? job.jobLocation ?? job.candidate_required_location);
-  const combined = `${title} ${description}`;
-
-  if (!title || !job.url) return false;
-  if (RESUME_PROFILE.excludedJobTypes.some(term => combined.includes(term))) return false;
-  if (RESUME_PROFILE.excludedKeywords.some(term => title.includes(term)) || /\b(senior|sr\.?|lead|principal|staff|architect|manager)\b/i.test(title)) return false;
-  if (!isPreferredLocation(location)) return false;
-
-  if (job.isActive === false || job.isExpired === true || job.isClosed === true ||
-      ["closed", "expired", "inactive"].includes(normalize(job.status))) return false;
-
-  const dateValue = job.publication_date ?? job.postedAt ?? job.postingDate ?? job.createdAt;
-  if (!dateValue) return false;
-  const timestamp = new Date(dateValue).getTime();
-  if (!Number.isFinite(timestamp)) return false;
-  const ageDays = (now - timestamp) / 86_400_000;
-  if (ageDays < -1 || ageDays > RESUME_PROFILE.maxAgeDays) return false;
-
-  const employees = Number(job.companySize ?? job.employeeCount ?? 0);
-  if (employees > 0 && employees < 50) return false;
-  return true;
+  return getJobEligibilityReason(job, now) === null;
 }
 
 export function getJobMatchLevel(score: number): "High" | "Medium" | "Low" {
