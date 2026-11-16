@@ -120,7 +120,8 @@ export class JobFetcherService {
       safelyFetch("RemoteOK", () => http.get("https://remoteok.com/api"), data =>
         (Array.isArray(data) ? data.slice(1) : []).filter((j: any) => matchesQuery({ ...j, title: j.position, tags: j.tags }, q)).map((j: any) =>
           normalizeJob(j, "RemoteOK", {
-            title: j.position, company: j.company, location: j.location || "Remote",
+            title: j.position, company: j.company,
+            location: /worldwide|anywhere|open to candidates in india|india|asia/i.test(stripHtml(j.description)) ? "Worldwide remote" : (j.location || "Remote"),
             description: j.description, url: j.url || j.apply_url, postedAt: j.date || j.epoch,
             salary: j.salary_min || j.salary_max ? `${j.salary_min || 0}-${j.salary_max || 0}` : "Not disclosed",
             employmentType: ""
