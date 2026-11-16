@@ -94,7 +94,7 @@ export function isEligibleJob(job: Record<string, any>, now = Date.now()): boole
 
   if (!title || !job.url) return false;
   if (RESUME_PROFILE.excludedJobTypes.some(term => combined.includes(term))) return false;
-  if (RESUME_PROFILE.excludedKeywords.some(term => title.includes(term)) || /\\b(senior|sr\\.?|lead|principal|staff|architect|manager)\\b/i.test(title)) return false;
+  if (RESUME_PROFILE.excludedKeywords.some(term => title.includes(term)) || /\b(senior|sr\.?|lead|principal|staff|architect|manager)\b/i.test(title)) return false;
   if (!isPreferredLocation(location)) return false;
 
   if (job.isActive === false || job.isExpired === true || job.isClosed === true ||
