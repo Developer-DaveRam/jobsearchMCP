@@ -40,7 +40,6 @@
     "src/app.ts",
     "src/api/swagger.ts",
     "src/router/**/*.ts",
-    "src/controller/**/*.ts",
-    "src/config/**/*.ts"
+    "src/controller/**/*.ts"
   ]
 }
