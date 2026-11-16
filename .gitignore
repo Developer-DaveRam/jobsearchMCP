@@ -1,6 +1,13 @@
 # Dependencies
 node_modules/
 
+# Local environment (keep the safe template)
+.env*
+!.env.example
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+
 # Next.js
 .next/
 out/
