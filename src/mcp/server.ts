@@ -71,12 +71,12 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       case "search_jobs": {
         const query = typeof args.query === "string" ? args.query.trim() : "";
         if (!query) throw new Error("query must be a non-empty string.");
-        const result = await jobFetcher.fetchAndStoreExternalJobs(query);
+        const result = await jobFetcher.fetchAndStoreExternalJobs(query, true);
         return textResult({ status: "success", query, totalFound: result.jobs.length, source: "Remotive", jobs: result.jobs.slice(0, 30) });
       }
 
       case "fetch_external_jobs": {
-        const result = await jobFetcher.fetchAndStoreExternalJobs();
+        const result = await jobFetcher.fetchAndStoreExternalJobs("node", true);
         return textResult({ status: "success", source: "Remotive", fetched: result.fetched, eligible: result.saved, jobs: result.jobs.slice(0, 30) });
       }
 
