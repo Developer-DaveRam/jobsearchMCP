@@ -2,8 +2,7 @@ import axios from "axios";
 import {
   calculateJobMatchScore,
   getJobEligibilityReason,
-  getJobMatchLevel,
-  isPreferredLocation
+  getJobMatchLevel
 } from "../helper/resume-matcher.helper";
 
 type ApplicationState = { applicationStatus: string; notes: string };
