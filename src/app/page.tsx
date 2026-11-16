@@ -68,8 +68,8 @@ export default function DashboardPage() {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         j =>
-          j.title.toLowerCase().includes(q) ||
-          j.company.toLowerCase().includes(q) ||
+          (j.title || '').toLowerCase().includes(q) ||
+          (j.company || '').toLowerCase().includes(q) ||
           (j.whyIFit && j.whyIFit.toLowerCase().includes(q)) ||
           (j.sourcePortal && j.sourcePortal.toLowerCase().includes(q))
       );
@@ -98,11 +98,26 @@ export default function DashboardPage() {
       const jobsJson = await jobsRes.json();
       const statsJson = await statsRes.json();
 
-      if (jobsJson.status === 1) {
-        setJobs(jobsJson.data);
-        setFilteredJobs(jobsJson.data);
+      if (jobsRes.ok && jobsJson?.status === 1) {
+        // API may return either { data: Job[] } or { data: { jobs: Job[] } }.
+        // Normalize both response contracts before updating React state.
+        const responseData = jobsJson.data;
+        const jobList = Array.isArray(responseData)
+          ? responseData
+          : Array.isArray(responseData?.jobs)
+            ? responseData.jobs
+            : Array.isArray(responseData?.data)
+              ? responseData.data
+              : [];
+
+        setJobs(jobList);
+        setFilteredJobs(jobList);
+      } else {
+        setJobs([]);
+        setFilteredJobs([]);
+        showToast(jobsJson?.message || 'Unable to load jobs', true);
       }
-      if (statsJson.status === 1) {
+      if (statsRes.ok && statsJson?.status === 1 && statsJson.data) {
         setStats(statsJson.data);
       }
     } catch (err) {
@@ -114,15 +129,15 @@ export default function DashboardPage() {
 
   async function handleSyncPortals() {
     setIsSyncing(true);
-    showToast('Fetching current eligible jobs from Remotive...');
+    showToast('Fetching and matching jobs from available sources...');
     try {
       const res = await fetch('/api/jobs', { method: 'POST' });
       const json = await res.json();
       if (json.status === 1) {
-        showToast(`Fetched and matched ${json.data.saved} eligible Remotive jobs!`);
+        showToast(`Fetched ${json.data?.fetched ?? 0} jobs and saved ${json.data?.saved ?? 0} matches.`);
         loadData();
       } else {
-        showToast('Failed to sync portals', true);
+        showToast(json?.message || 'Failed to sync job sources', true);
       }
     } catch (err) {
       showToast('Error syncing portals', true);
