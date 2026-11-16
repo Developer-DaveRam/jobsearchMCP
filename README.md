@@ -2,30 +2,29 @@
 
 A personal job-search dashboard and Model Context Protocol (MCP) server.
 
-## Current data source
+## Free public job data sources
 
-The live fetcher currently uses the public **Remotive** remote-jobs API only. It does not scrape or claim to fetch individual vacancies from LinkedIn, Naukri, Indeed or Glassdoor. The old curated portal-search URLs were removed from the results because a search-results page is not a verified vacancy.
+The live aggregator uses these public job-board APIs, without paid subscriptions or mandatory API keys:
 
-Jobs are deduplicated by their application URL and filtered using:
-- A real publication date no older than seven days
-- Bengaluru, Chennai or remote location
-- Excluded internship, freelance, part-time and senior-role keywords
-- Resume skill and role matching
+- **Remotive** — https://remotive.com/api/remote-jobs
+- **RemoteOK** — https://remoteok.com/api
+- **Jobicy** — https://jobicy.com/api/jobs
+- **Himalayas** — https://himalayas.app/jobs/api/search
+- **Arbeitnow** — https://www.arbeitnow.com/api/job-board-api
 
-A match score is a heuristic ranking aid, not a prediction of recruiter response or a guarantee of eligibility.
+Each provider is called independently. If one is down or rate-limited, results from the others are still returned. Listings are normalized, deduplicated by their canonical URL, filtered for the configured resume/location/freshness preferences, and ranked with a heuristic match score. Match scores are not a prediction of recruiter response.
+
+**Attribution:** keep the source name and original listing URL visible. Himalayas requires a visible source link and use of its `applicationLink`; Jobicy and RemoteOK also require source attribution/link-back. Provider terms can change, so review them before redistributing listings or turning this into a commercial job board. The public feeds are not guaranteed to contain Bengaluru/Chennai on-site roles.
+
+## LinkedIn, Naukri, Indeed and Glassdoor
+
+These portals do not provide unrestricted public job-search APIs for this kind of free integration. This project does not scrape login-protected pages, bypass bot protections, or invent listings. The API response includes direct search links for these four portals so the user can search there manually. A separate authorized/partner API would be needed for automated listings.
 
 ## Setup
 
 ```bash
 npm ci
 cp .env.example .env
-```
-
-The MCP server does not require the database. The database settings are used by the legacy Prisma-backed jobs API.
-
-Generate the Prisma client before running the database-backed API:
-
-```bash
 npm run prisma:generate
 ```
 
@@ -39,8 +38,6 @@ Open http://localhost:5066.
 
 ## Run the MCP server
 
-Development:
-
 ```bash
 npm run dev:mcp
 ```
@@ -52,12 +49,17 @@ npm run build:mcp
 npm run start:mcp
 ```
 
-The MCP server exposes:
-- `search_jobs` — search Remotive by keyword
-- `fetch_external_jobs` — refresh Node.js-focused results
-- `get_matched_jobs` — list jobs above a minimum match score
-- `get_resume_profile` — inspect the matching profile
-- `update_job_application_status` — update local tracking status and notes
+## API usage
+
+- `POST /api/jobs` — refresh jobs; optional JSON body: `{"query":"node.js"}`
+- `GET /api/jobs?q=node.js` — retrieve cached/current results
+- `GET /api/jobs/stats` — dashboard counts
+- Express `POST /fetch-portals` — refresh all free providers; optional `{"query":"node.js"}`
+- Express `GET /matched?q=node.js` — matched jobs and provider diagnostics
+
+The sync response includes `sources` (per-provider fetched/saved/error), `rejected` (why listings were filtered), and `portalSearchLinks` for LinkedIn, Naukri, Indeed and Glassdoor.
+
+Application status and notes are currently stored in process memory and reset when the server restarts. Persist them in the database before relying on this as a production tracker.
 
 ## Validation
 
@@ -67,7 +69,3 @@ npm test
 npm run build
 npm run build:mcp
 ```
-
-## Important persistence limitation
-
-Application status and notes are currently held in process memory. They reset when the relevant server process restarts and are not safe for multi-instance production deployment. Persist them in the Prisma `Job` table (with a stable external job identifier) before relying on this as a long-running production tracker.
