@@ -1,5 +1,5 @@
 import axios from "axios";
-import { calculateJobMatchScore, isEligibleJob, getJobMatchLevel } from "../helper/resume-matcher.helper";
+import { calculateJobMatchScore, isEligibleJob, getJobEligibilityReason, getJobMatchLevel } from "../helper/resume-matcher.helper";
 
 type ApplicationState = { applicationStatus: string; notes: string };
 
@@ -29,7 +29,7 @@ export class JobFetcherService {
     return "LOW";
   }
 
-  async fetchAndStoreExternalJobs(searchQuery = "node", forceRefresh = false): Promise<{ fetched: number; saved: number; jobs: any[] }> {
+  async fetchAndStoreExternalJobs(searchQuery = "node", forceRefresh = false): Promise<{ fetched: number; saved: number; jobs: any[]; rejected: Record<string, number> }> {
     const query = searchQuery.trim().slice(0, 120) || "node";
     const cached = jobCache.get(query.toLowerCase());
     if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
@@ -41,16 +41,20 @@ export class JobFetcherService {
     });
 
     const rawJobs: any[] = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
-    const unique = new Map<string, any>();
+    const unique = new Map<string, any>();\n    const rejected: Record<string, number> = {};
 
     for (const job of rawJobs) {
       const url = String(job.url ?? "").trim();
       if (!url || unique.has(url)) continue;
-      if (!isEligibleJob({
+      const rejectionReason = getJobEligibilityReason({
         ...job,
         location: job.candidate_required_location,
         postedAt: job.publication_date
-      })) continue;
+      });
+      if (rejectionReason) {
+        rejected[rejectionReason] = (rejected[rejectionReason] ?? 0) + 1;
+        continue;
+      }
 
       const id = toStableId(url);
       const title = String(job.title ?? "Untitled role");
@@ -87,7 +91,7 @@ export class JobFetcherService {
 
     const jobs = [...unique.values()].sort((a, b) => b.matchScore - a.matchScore);
     jobCache.set(query.toLowerCase(), { expiresAt: Date.now() + CACHE_TTL_MS, fetched: rawJobs.length, jobs });
-    return { fetched: rawJobs.length, saved: jobs.length, jobs };
+    return { fetched: rawJobs.length, saved: jobs.length, jobs, rejected };
   }
 
   async getMatchedJobsForResume(searchQuery = "node"): Promise<any[]> {
