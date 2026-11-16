@@ -5,7 +5,7 @@ import { JobFetcherService } from "../service/job-fetcher.service.js";
 const jobService = new JobService();
 const jobFetcherService = new JobFetcherService();
 
-export const getAllJobs = async (req: Request, res: Response) => {
+export const getAllJobs = async (_req: Request, res: Response) => {
   const result = await jobService.fetchJobs();
   res.json(result);
 };
@@ -17,8 +17,9 @@ export const createJob = async (req: Request, res: Response) => {
 
 export const fetchAndSavePortalJobs = async (req: Request, res: Response) => {
   try {
-    const result = await jobFetcherService.fetchAndStoreExternalJobs();
-    res.json({ status: 1, message: "Jobs fetched and stored successfully", data: result });
+    const query = typeof req.body?.query === "string" ? req.body.query : "node";
+    const result = await jobFetcherService.fetchAndStoreExternalJobs(query, true);
+    res.json({ status: 1, message: "Jobs synced successfully", data: result });
   } catch (error: any) {
     res.status(500).json({ status: 0, message: error.message });
   }
@@ -26,8 +27,9 @@ export const fetchAndSavePortalJobs = async (req: Request, res: Response) => {
 
 export const getMatchedJobs = async (req: Request, res: Response) => {
   try {
-    const jobs = await jobFetcherService.getMatchedJobsForResume();
-    res.json({ status: 1, message: "Matched jobs retrieved successfully", data: jobs });
+    const query = typeof req.query.q === "string" ? req.query.q : "node";
+    const result = await jobFetcherService.fetchAndStoreExternalJobs(query);
+    res.json({ status: 1, message: "Matched jobs retrieved successfully", data: result });
   } catch (error: any) {
     res.status(500).json({ status: 0, message: error.message });
   }
@@ -46,7 +48,7 @@ export const updateJobStatus = async (req: Request, res: Response) => {
   }
 };
 
-export const getDashboardStats = async (req: Request, res: Response) => {
+export const getDashboardStats = async (_req: Request, res: Response) => {
   try {
     const stats = await jobFetcherService.getDashboardStats();
     res.json({ status: 1, message: "Dashboard stats retrieved successfully", data: stats });
