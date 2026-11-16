@@ -366,7 +366,7 @@ export default function DashboardPage() {
                     <td colSpan={8} className="text-center py-16 text-slate-400">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        <p className="font-medium text-slate-300">Loading verified job openings...</p>
+                        <p className="font-medium text-slate-300">Loading eligible remote job listings...</p>
                       </div>
                     </td>
                   </tr>
