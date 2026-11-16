@@ -87,14 +87,19 @@ export class JobFetcherService {
     return result.jobs;
   }
 
-  async updateJobStatus(id: number, applicationStatus: string, notes?: string): Promise<any> {
+  async updateJobStatus(id: number, applicationStatus?: string, notes?: string): Promise<any> {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("A valid job ID is required.");
     const allowed = ["Not Applied", "Applied", "Interview", "Rejected", "Offer"];
-    if (!allowed.includes(applicationStatus)) throw new Error("Invalid application status.");
+    if (applicationStatus !== undefined && !allowed.includes(applicationStatus)) {
+      throw new Error("Invalid application status.");
+    }
+    if (applicationStatus === undefined && notes === undefined) {
+      throw new Error("Provide applicationStatus or notes to update.");
+    }
 
     const existing = jobStateMap.get(id) ?? { applicationStatus: "Not Applied", notes: "" };
     const updated = {
-      applicationStatus,
+      applicationStatus: applicationStatus ?? existing.applicationStatus,
       notes: notes === undefined ? existing.notes : String(notes).slice(0, 5000)
     };
     jobStateMap.set(id, updated);
