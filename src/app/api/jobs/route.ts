@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function POST() {
   try {
-    const result = await jobFetcherService.fetchAndStoreExternalJobs();
+    const result = await jobFetcherService.fetchAndStoreExternalJobs("node", true);
     return NextResponse.json({ status: 1, message: "Jobs synced successfully", data: result });
   } catch (error: any) {
     return NextResponse.json({ status: 0, message: error.message }, { status: 500 });
