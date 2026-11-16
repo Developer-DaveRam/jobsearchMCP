@@ -1,9 +1,23 @@
 import axios from "axios";
-import { CURATED_JOBS } from "../helper/curated-jobs.helper";
-import { calculateJobMatchScore } from "../helper/resume-matcher.helper";
+import { calculateJobMatchScore, isEligibleJob, getJobMatchLevel } from "../helper/resume-matcher.helper.js";
 
-// In-memory store for application statuses and notes
-const jobStateMap = new Map<number, { applicationStatus: string; notes: string }>();
+type ApplicationState = { applicationStatus: string; notes: string };
+
+// Temporary process-local state. Persist this in the Job table before deploying multiple instances.
+const jobStateMap = new Map<number, ApplicationState>();
+const http = axios.create({
+  timeout: 12000,
+  headers: { Accept: "application/json", "User-Agent": "jobsearchMCP/2.1" }
+});
+
+const toStableId = (value: string): number => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) || 1;
+};
 
 export class JobFetcherService {
   private getProbabilityStatus(score: number): string {
@@ -13,91 +27,75 @@ export class JobFetcherService {
     return "LOW";
   }
 
-  async fetchAndStoreExternalJobs(): Promise<{ fetched: number; saved: number; jobs: any[] }> {
-    const processedJobs: any[] = [];
-
-    // 1. Process Curated Jobs on-the-fly
-    CURATED_JOBS.forEach((item, index) => {
-      const id = index + 1;
-      const score = calculateJobMatchScore(item.title, item.description, item.location);
-      const status = this.getProbabilityStatus(score);
-      const state = jobStateMap.get(id) || { applicationStatus: "Not Applied", notes: "" };
-
-      processedJobs.push({
-        id,
-        title: item.title,
-        company: item.company,
-        location: item.location,
-        description: item.description,
-        salary: item.salary,
-        url: item.url,
-        source: item.source,
-        sourcePortal: item.sourcePortal,
-        matchScore: score,
-        probabilityStatus: status,
-        whyIFit: item.whyIFit || `Matches profile with ${score}% compatibility.`,
-        missingSkills: item.missingSkills || "None",
-        recruiterResponseLikelihood: item.recruiterResponseLikelihood || (score > 80 ? "High" : "Medium"),
-        applicationStatus: state.applicationStatus,
-        notes: state.notes,
-        postedAt: new Date().toISOString()
-      });
+  async fetchAndStoreExternalJobs(searchQuery = "node"): Promise<{ fetched: number; saved: number; jobs: any[] }> {
+    const query = searchQuery.trim().slice(0, 120) || "node";
+    const response = await http.get("https://remotive.com/api/remote-jobs", {
+      params: { search: query, limit: 100 }
     });
 
-    // 2. Try fetching live remote jobs from Remotive on-the-fly
-    try {
-      const remotiveRes = await axios.get("https://remotive.com/api/remote-jobs?search=node&limit=15", { timeout: 4000 });
-      const remotiveJobs = remotiveRes.data?.jobs || [];
-      remotiveJobs.forEach((job: any, idx: number) => {
-        const id = CURATED_JOBS.length + idx + 1;
-        const score = calculateJobMatchScore(job.title, job.description, job.candidate_required_location);
-        const status = this.getProbabilityStatus(score);
-        const state = jobStateMap.get(id) || { applicationStatus: "Not Applied", notes: "" };
+    const rawJobs: any[] = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
+    const unique = new Map<string, any>();
 
-        processedJobs.push({
-          id,
-          title: job.title || "Untitled Job",
-          company: job.company_name || "Unknown Company",
-          location: job.candidate_required_location || "Remote",
-          description: job.description ? job.description.substring(0, 5000) : "",
-          salary: job.salary || "Competitive",
-          url: job.url || "",
-          source: "Remotive",
-          sourcePortal: "Remotive",
-          matchScore: score,
-          probabilityStatus: status,
-          whyIFit: `Remote Node.js role with ${score}% match.`,
-          missingSkills: "Check description for specific infrastructure requirements.",
-          recruiterResponseLikelihood: score > 80 ? "High" : "Medium",
-          applicationStatus: state.applicationStatus,
-          notes: state.notes,
-          postedAt: job.publication_date || new Date().toISOString()
-        });
+    for (const job of rawJobs) {
+      const url = String(job.url ?? "").trim();
+      if (!url || unique.has(url)) continue;
+      if (!isEligibleJob({
+        ...job,
+        location: job.candidate_required_location,
+        postedAt: job.publication_date
+      })) continue;
+
+      const id = toStableId(url);
+      const title = String(job.title ?? "Untitled role");
+      const description = String(job.description ?? "").replace(/<[^>]*>/g, " ").slice(0, 10000);
+      const location = String(job.candidate_required_location ?? "Remote");
+      const score = calculateJobMatchScore(title, description, location, {
+        jobExperience: job.job_type ?? "",
+        jobSalary: job.salary ?? ""
       });
-    } catch (err) {
-      console.log("Remotive live fetch skipped/failed gracefully:", err);
+      const state = jobStateMap.get(id) ?? { applicationStatus: "Not Applied", notes: "" };
+
+      unique.set(url, {
+        id,
+        externalId: String(job.id ?? url),
+        title,
+        company: String(job.company_name ?? "Company not provided"),
+        location,
+        description,
+        salary: String(job.salary ?? "Not disclosed"),
+        url,
+        source: "Remotive",
+        sourcePortal: "Remotive",
+        matchScore: score,
+        matchLevel: getJobMatchLevel(score),
+        probabilityStatus: this.getProbabilityStatus(score),
+        whyIFit: `Matched skills and role keywords; calculated match score ${score}%.`,
+        missingSkills: "Review the original job description for requirements not listed in your profile.",
+        recruiterResponseLikelihood: "Not reliably predictable",
+        applicationStatus: state.applicationStatus,
+        notes: state.notes,
+        postedAt: job.publication_date ?? null
+      });
     }
 
-    // Sort by match score descending
-    processedJobs.sort((a, b) => b.matchScore - a.matchScore);
-
-    return {
-      fetched: processedJobs.length,
-      saved: processedJobs.length,
-      jobs: processedJobs
-    };
+    const jobs = [...unique.values()].sort((a, b) => b.matchScore - a.matchScore);
+    return { fetched: rawJobs.length, saved: jobs.length, jobs };
   }
 
-  async getMatchedJobsForResume(): Promise<any[]> {
-    const result = await this.fetchAndStoreExternalJobs();
+  async getMatchedJobsForResume(searchQuery = "node"): Promise<any[]> {
+    const result = await this.fetchAndStoreExternalJobs(searchQuery);
     return result.jobs;
   }
 
   async updateJobStatus(id: number, applicationStatus: string, notes?: string): Promise<any> {
-    const existing = jobStateMap.get(id) || { applicationStatus: "Not Applied", notes: "" };
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error("A valid job ID is required.");
+    const allowed = ["Not Applied", "Applied", "Interview", "Rejected", "Offer"];
+    if (!allowed.includes(applicationStatus)) throw new Error("Invalid application status.");
+
+    const existing = jobStateMap.get(id) ?? { applicationStatus: "Not Applied", notes: "" };
     const updated = {
-      applicationStatus: applicationStatus !== undefined ? applicationStatus : existing.applicationStatus,
-      notes: notes !== undefined ? notes : existing.notes
+      applicationStatus,
+      notes: notes === undefined ? existing.notes : String(notes).slice(0, 5000)
     };
     jobStateMap.set(id, updated);
     return { id, ...updated };
@@ -105,29 +103,18 @@ export class JobFetcherService {
 
   async getDashboardStats(): Promise<any> {
     const jobs = await this.getMatchedJobsForResume();
-    const total = jobs.length;
-    const highlyPossible = jobs.filter(j => j.probabilityStatus === "HIGHLY POSSIBLE").length;
-    const goodMatch = jobs.filter(j => j.probabilityStatus === "GOOD MATCH").length;
-    const moderate = jobs.filter(j => j.probabilityStatus === "MODERATE").length;
-    const low = jobs.filter(j => j.probabilityStatus === "LOW").length;
-
-    const applied = jobs.filter(j => j.applicationStatus === "Applied").length;
-    const interview = jobs.filter(j => j.applicationStatus === "Interview").length;
-    const rejected = jobs.filter(j => j.applicationStatus === "Rejected").length;
-    const offer = jobs.filter(j => j.applicationStatus === "Offer").length;
-    const pending = total - (applied + interview + rejected + offer);
-
+    const count = (status: string) => jobs.filter(job => job.applicationStatus === status).length;
     return {
-      total,
-      highlyPossible,
-      goodMatch,
-      moderate,
-      low,
-      applied,
-      interview,
-      rejected,
-      offer,
-      pending
+      total: jobs.length,
+      highlyPossible: jobs.filter(job => job.probabilityStatus === "HIGHLY POSSIBLE").length,
+      goodMatch: jobs.filter(job => job.probabilityStatus === "GOOD MATCH").length,
+      moderate: jobs.filter(job => job.probabilityStatus === "MODERATE").length,
+      low: jobs.filter(job => job.probabilityStatus === "LOW").length,
+      applied: count("Applied"),
+      interview: count("Interview"),
+      rejected: count("Rejected"),
+      offer: count("Offer"),
+      pending: count("Not Applied")
     };
   }
 }
