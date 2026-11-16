@@ -121,7 +121,7 @@ export class JobFetcherService {
         (Array.isArray(data) ? data.slice(1) : []).filter((j: any) => matchesQuery({ ...j, title: j.position, tags: j.tags }, q)).map((j: any) =>
           normalizeJob(j, "RemoteOK", {
             title: j.position, company: j.company, location: j.location || "Remote",
-            description: j.description, url: j.apply_url || j.url, postedAt: j.date || j.epoch,
+            description: j.description, url: j.url || j.apply_url, postedAt: j.date || j.epoch,
             salary: j.salary_min || j.salary_max ? `${j.salary_min || 0}-${j.salary_max || 0}` : "Not disclosed",
             employmentType: ""
           })).filter(Boolean)),
@@ -229,7 +229,8 @@ export class JobFetcherService {
   }
 
   async getDashboardStats(): Promise<any> {
-    const jobs = await this.getMatchedJobsForResume();
+    const result = await this.fetchAndStoreExternalJobs("node");
+    const jobs = result.jobs;
     const count = (status: string) => jobs.filter(job => job.applicationStatus === status).length;
     return {
       total: jobs.length,
@@ -238,7 +239,9 @@ export class JobFetcherService {
       moderate: jobs.filter(job => job.probabilityStatus === "MODERATE").length,
       low: jobs.filter(job => job.probabilityStatus === "LOW").length,
       applied: count("Applied"), interview: count("Interview"), rejected: count("Rejected"),
-      offer: count("Offer"), pending: count("Not Applied")
+      offer: count("Offer"), pending: count("Not Applied"),
+      sources: result.sources,
+      rejected: result.rejected
     };
   }
 }
