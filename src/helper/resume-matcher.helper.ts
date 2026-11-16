@@ -26,7 +26,7 @@ const normalize = (value: unknown): string =>
 
 const hasSkill = (text: string, skill: string): boolean => {
   const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(^|[^a-z0-9+#.])${escaped}([^a-z0-9+#.]|$)`, "i").test(text);
+  return new RegExp(`(^|[^a-z0-9+#])${escaped}([^a-z0-9+#]|$)`, "i").test(text);
 };
 
 export function calculateJobMatchScore(
