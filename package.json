@@ -7,9 +7,13 @@
     "dev": "next dev -p 5066",
     "build": "next build",
     "start": "next start -p 5066",
-    "build:mcp": "esbuild src/mcp/server.ts --bundle --format=esm --platform=node --outfile=dist/mcp-server.js",
+    "build:mcp": "esbuild src/mcp/server.ts --bundle --format=esm --platform=node --outfile=dist/mcp-server.mjs",
     "typecheck": "tsc --noEmit",
-    "swagger": "tsx src/api/swagger.ts"
+    "swagger": "tsx src/api/swagger.ts",
+    "dev:mcp": "tsx src/mcp/server.ts",
+    "start:mcp": "node dist/mcp-server.mjs",
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "test": "tsx --test src/helper/resume-matcher.helper.test.ts"
   },
   "license": "MIT",
   "dependencies": {
