@@ -9,6 +9,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: "mysql://root:@localhost:3306/jobsearchmcp",
+    url: env("DATABASE_URL"),
   },
 });
