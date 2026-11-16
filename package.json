@@ -12,7 +12,8 @@
     "swagger": "tsx src/api/swagger.ts",
     "dev:mcp": "tsx src/mcp/server.ts",
     "start:mcp": "node dist/mcp-server.mjs",
-    "prisma:generate": "prisma generate --schema=prisma/schema.prisma"
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "test": "tsx --test src/helper/resume-matcher.helper.test.ts"
   },
   "license": "MIT",
   "dependencies": {
