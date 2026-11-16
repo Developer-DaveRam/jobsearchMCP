@@ -1,170 +1,33 @@
-// export const RESUME_PROFILE = {
-//   name: "Daveram A",
-//   title: "Full Stack Developer",
-//   skills: [
-//     "node.js", "typescript", "express.js", "react.js", "next.js",
-//     "prisma", "mysql", "mongodb", "redis", "rest apis", "docker", 
-//     "tailwind css", "git", "pm2", "nginx", "cpanel"
-//   ],
-//   experienceYears: 2,
-//   preferredLocations: ["Bengaluru", "Chennai", "Remote"],
-//   expectedSalary: { min: 600000, max: 900000 } // In INR
-// };
-
-// export function calculateJobMatchScore(jobTitle: string, jobDescription: string = "", jobLocation: string = ""): number {
-//   const text = `${jobTitle} ${jobDescription} ${jobLocation}`.toLowerCase();
-  
-//   const coreSkills = ["node.js", "typescript", "react", "next.js", "express"];
-//   const secondarySkills = ["prisma", "mysql", "mongodb", "redis", "docker", "tailwind", "rest api"];
-  
-//   let coreMatchCount = 0;
-//   let secondaryMatchCount = 0;
-
-//   coreSkills.forEach(skill => {
-//     if (text.includes(skill.toLowerCase())) coreMatchCount++;
-//   });
-
-//   secondarySkills.forEach(skill => {
-//     if (text.includes(skill.toLowerCase())) secondaryMatchCount++;
-//   });
-
-//   // Weighted score: Core skills are 60%, Secondary skills are 40%
-//   const coreScore = (coreMatchCount / coreSkills.length) * 60;
-//   const secondaryScore = (secondaryMatchCount / secondarySkills.length) * 40;
-  
-//   let finalScore = coreScore + secondaryScore;
-
-//   // Exact location match bonus
-//   const locationMatch = RESUME_PROFILE.preferredLocations.some(loc => 
-//     text.includes(loc.toLowerCase())
-//   );
-//   if (locationMatch) {
-//     finalScore = Math.min(100, finalScore + 10);
-//   }
-
-//   // Penalty for high experience requirements (heuristic)
-//   const expMatch = text.match(/(\d+)\s*\+?\s*years?/);
-//   if (expMatch && expMatch[1]) {
-//     const requiredExp = parseInt(expMatch[1]);
-//     if (requiredExp > 3) {
-//       finalScore *= 0.5; // Significant penalty for 3+ years if candidate has 1-2
-//     }
-//   }
-
-//   return Math.round(finalScore * 10) / 10;
-// }
-
-
-
-
 export const RESUME_PROFILE = {
   name: "Daveram A",
-
-  title: "Full Stack Developer",
-
-  experience: {
-    min: 1,
-    max: 2,
-    target: "1-2 years",
-  },
-
-  employmentType: ["Full-time", "Permanent"],
-
+  title: "Full Stack / Node.js Backend Developer",
+  experienceYears: 2,
+  preferredLocations: ["bengaluru", "bangalore", "chennai"],
+  remotePreferred: true,
+  expectedSalary: { min: 500000, max: 1200000, currency: "INR" },
   skills: {
-    core: [
-      "node.js",
-      "typescript",
-      "express.js",
-      "react.js",
-      "next.js",
-    ],
-
-    secondary: [
-      "prisma",
-      "mysql",
-      "mongodb",
-      "redis",
-      "docker",
-      "tailwind css",
-      "rest api",
-    ],
-
-    additional: [
-      "git",
-      "pm2",
-      "nginx",
-      "cpanel",
-      "bullmq",
-      "vite",
-      "javascript",
-    ],
+    core: ["node.js", "node", "typescript", "express", "react", "next.js", "javascript"],
+    secondary: ["prisma", "mysql", "mongodb", "redis", "docker", "tailwind", "rest api", "restful api"],
+    additional: ["git", "pm2", "nginx", "bullmq", "html", "css"]
   },
-
-  preferredLocations: [
-    "bengaluru",
-    "bangalore",
-    "chennai",
-  ],
-
-  workMode: [
-    "hybrid",
-    "onsite",
-    ],
-
-  expectedSalary: {
-    min: 600000,
-    max: 900000,
-    absoluteMinimum: 500000,
-    currency: "INR",
-  },
-
-  companyPreferences: {
-    preferredTypes: [
-      "MNC",
-      "Tier-2",
-      "Mid-size",
-      "Service-based",
-      "Product-based",
-    ],
-    minimumEmployees: 50,
-    idealEmployees: 200,
-    avoidSmallStartups: true,
-  },
-
-  jobFreshness: {
-    maxAgeDays: 7,
-    requireVerifiedDate: true,
-    includeRefreshedJobs: true,
-  },
-
-  excludedJobTypes: [
-    "internship",
-    "intern",
-    "freelance",
-    "part-time",
-    "unpaid",
-  ],
-
-  excludedKeywords: [
-    "senior developer",
-    "lead developer",
-    "technical lead",
-    "architect",
-    "principal engineer",
-  ],
-};
+  excludedJobTypes: ["internship", "intern", "freelance", "part-time", "unpaid", "contract"],
+  excludedKeywords: ["senior developer", "lead developer", "technical lead", "architect", "principal engineer", "engineering manager"],
+  maxAgeDays: 7
+} as const;
 
 type MatchOptions = {
-  jobTitle: string;
-  jobDescription?: string;
-  jobLocation?: string;
   jobExperience?: string;
   jobSalary?: string;
   companySize?: number;
 };
 
 const normalize = (value: unknown): string =>
-  String(value ?? "").toLowerCase().trim();
+  String(value ?? "").toLowerCase().replace(/[\u2010-\u2015]/g, "-").trim();
+
+const hasSkill = (text: string, skill: string): boolean => {
+  const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9+#.])${escaped}([^a-z0-9+#.]|$)`, "i").test(text);
+};
 
 export function calculateJobMatchScore(
   jobTitle: string,
@@ -172,181 +35,85 @@ export function calculateJobMatchScore(
   jobLocation = "",
   options: MatchOptions | null = null
 ): number {
-  const text = normalize(
-    `${jobTitle} ${jobDescription} ${jobLocation}`
-  );
-
+  const title = normalize(jobTitle);
+  const description = normalize(jobDescription);
+  const allText = `${title} ${description}`;
   let score = 0;
 
-  // Core technical skills: 45 points
-  const coreSkills = RESUME_PROFILE.skills.core;
+  const core = RESUME_PROFILE.skills.core;
+  const secondary = RESUME_PROFILE.skills.secondary;
+  const additional = RESUME_PROFILE.skills.additional;
+  score += core.filter(skill => hasSkill(allText, skill)).length / core.length * 45;
+  score += secondary.filter(skill => hasSkill(allText, skill)).length / secondary.length * 20;
+  score += additional.filter(skill => hasSkill(allText, skill)).length / additional.length * 5;
 
-  const coreMatches = coreSkills.filter(skill =>
-    text.includes(skill)
-  ).length;
+  const roleTerms = ["node.js", "backend", "back-end", "full stack", "software engineer", "react developer", "api developer"];
+  if (roleTerms.some(term => title.includes(term))) score += 10;
 
-  score += (coreMatches / coreSkills.length) * 45;
-
-  // Secondary skills: 20 points
-  const secondarySkills = RESUME_PROFILE.skills.secondary;
-
-  const secondaryMatches = secondarySkills.filter(skill =>
-    text.includes(skill)
-  ).length;
-
-  score += (secondaryMatches / secondarySkills.length) * 20;
-
-  // Additional skills: 5 points
-  const additionalSkills = RESUME_PROFILE.skills.additional;
-
-  const additionalMatches = additionalSkills.filter(skill =>
-    text.includes(skill)
-  ).length;
-
-  score += (additionalMatches / additionalSkills.length) * 5;
-
-  // Role relevance: 10 points
-  const roleKeywords = [
-    "full stack",
-    "backend developer",
-    "node.js developer",
-    "react.js developer",
-    "next.js developer",
-    "software engineer",
-    "react developer",
-    "backend engineer",
-  ];
-
-  if (roleKeywords.some(keyword => text.includes(keyword))) {
-    score += 10;
-  }
-
-  // Location relevance: 10 points
   const location = normalize(jobLocation);
+  if (RESUME_PROFILE.preferredLocations.some(place => location.includes(place))) score += 10;
+  else if (/remote|anywhere|worldwide/i.test(location)) score += 7;
 
-  if (
-    RESUME_PROFILE.preferredLocations.some(loc =>
-      location.includes(loc)
-    )
-  ) {
-    score += 10;
+  const experience = normalize(options?.jobExperience ?? "");
+  const range = experience.match(/(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)/);
+  const minimum = experience.match(/(\d+(?:\.\d+)?)\s*\+?\s*years?/);
+  if (range) {
+    const low = Number(range[1]);
+    const high = Number(range[2]);
+    if (low <= 2 && high >= 2) score += 5;
+    else if (low <= 3 && high >= 1) score += 3;
+    else if (low > 3) score -= 10;
+  } else if (minimum) {
+    const required = Number(minimum[1]);
+    if (required <= 2) score += 5;
+    else if (required <= 3) score += 2;
+    else score -= Math.min(15, (required - 2) * 5);
   }
 
-  // Experience relevance: 5 points
-  const experience = normalize(options?.jobExperience || text);
-
-  if (
-    /0\s*[-–to]+\s*2\s*years?|1\s*[-–to]+\s*2\s*years?|2\s*\+?\s*years?/.test(experience)
-  ) {
-    score += 5;
-  } else if (/0\s*[-–to]+\s*3\s*years?/.test(experience)) {
-    score += 3;
-  }
-
-  // Salary relevance: 5 points
   const salary = normalize(options?.jobSalary);
-
-  if (salary) {
-    if (
-      salary.includes("6-9") ||
-      salary.includes("6 to 9") ||
-      salary.includes("6–9")
-    ) {
-      score += 5;
-    } else if (salary.includes("5")) {
-      score += 3;
-    }
+  if (/5\s*(?:-|to)\s*12|6\s*(?:-|to)\s*9|7\s*(?:-|to)\s*12/.test(salary) || /5\s*[-–]\s*12\s*lpa/.test(salary)) {
+    score += 5;
+  } else if (salary && /below|less than|under/.test(salary)) {
+    score -= 5;
   }
 
-  return Math.round(Math.min(100, score) * 10) / 10;
+  return Math.round(Math.max(0, Math.min(100, score)) * 10) / 10;
 }
 
 export function isPreferredLocation(location: string): boolean {
-  const normalized = normalize(location);
-
-  return RESUME_PROFILE.preferredLocations.some(loc =>
-    normalized.includes(loc)
-  );
+  const value = normalize(location);
+  return RESUME_PROFILE.preferredLocations.some(place => value.includes(place)) ||
+    (RESUME_PROFILE.remotePreferred && /remote|anywhere|worldwide/i.test(value));
 }
 
-export function isEligibleJob(job: any): boolean {
-  const title = normalize(job.title || job.jobTitle || job.role);
-  const description = normalize(job.description || job.jobDescription);
-  const location = normalize(job.location || job.jobLocation);
-
+export function isEligibleJob(job: Record<string, any>, now = Date.now()): boolean {
+  const title = normalize(job.title ?? job.jobTitle ?? job.role);
+  const description = normalize(job.description ?? job.jobDescription);
+  const location = normalize(job.location ?? job.jobLocation ?? job.candidate_required_location);
   const combined = `${title} ${description}`;
 
-  // Exclude internships and unwanted employment types
-  if (
-    RESUME_PROFILE.excludedJobTypes.some(type =>
-      combined.includes(type)
-    )
-  ) {
-    return false;
-  }
+  if (!title || !job.url) return false;
+  if (RESUME_PROFILE.excludedJobTypes.some(term => combined.includes(term))) return false;
+  if (RESUME_PROFILE.excludedKeywords.some(term => title.includes(term))) return false;
+  if (!isPreferredLocation(location)) return false;
 
-  // Exclude senior-level positions
-  if (
-    RESUME_PROFILE.excludedKeywords.some(keyword =>
-      title.includes(keyword)
-    )
-  ) {
-    return false;
-  }
+  if (job.isActive === false || job.isExpired === true || job.isClosed === true ||
+      ["closed", "expired", "inactive"].includes(normalize(job.status))) return false;
 
-  // Strict location filtering
-  if (!isPreferredLocation(location)) {
-    return false;
-  }
-
-  // Exclude explicitly closed jobs
-  if (
-    job.isActive === false ||
-    job.isExpired === true ||
-    job.isClosed === true ||
-    ["closed", "expired", "inactive"].includes(
-      normalize(job.status)
-    )
-  ) {
-    return false;
-  }
-
-  // Exclude explicitly small companies
-  const employees = Number(
-    job.companySize || job.employeeCount || 0
-  );
-
-  if (
-    employees > 0 &&
-    employees < RESUME_PROFILE.companyPreferences.minimumEmployees
-  ) {
-    return false;
-  }
-
-  // Require verifiable posting or refresh date
-  const dateValue =
-    job.refreshedAt ||
-    job.lastRefreshedAt ||
-    job.postedAt ||
-    job.postingDate ||
-    job.createdAt;
-
+  const dateValue = job.publication_date ?? job.postedAt ?? job.postingDate ?? job.createdAt;
   if (!dateValue) return false;
+  const timestamp = new Date(dateValue).getTime();
+  if (!Number.isFinite(timestamp)) return false;
+  const ageDays = (now - timestamp) / 86_400_000;
+  if (ageDays < -1 || ageDays > RESUME_PROFILE.maxAgeDays) return false;
 
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) return false;
-
-  const ageDays =
-    (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
-
-  if (ageDays < 0 || ageDays > 7) return false;
-
+  const employees = Number(job.companySize ?? job.employeeCount ?? 0);
+  if (employees > 0 && employees < 50) return false;
   return true;
 }
 
-export function getJobMatchLevel(score: number) {
-  if (score >= 85) return "High";
-  if (score >= 70) return "Medium";
+export function getJobMatchLevel(score: number): "High" | "Medium" | "Low" {
+  if (score >= 80) return "High";
+  if (score >= 60) return "Medium";
   return "Low";
 }
